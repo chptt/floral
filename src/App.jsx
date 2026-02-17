@@ -6,25 +6,25 @@ import './App.css';
 const CONTRACT_ADDRESS = import.meta.env.VITE_CONTRACT_ADDRESS;
 const PINATA_API_KEY = import.meta.env.VITE_PINATA_API_KEY;
 const PINATA_SECRET_API_KEY = import.meta.env.VITE_PINATA_SECRET_API_KEY;
-const MINT_PRICE = '0.000001';
-const SEPOLIA_CHAIN_ID = '0xaa36a7'; // 11155111 in hex
+const SEPOLIA_CHAIN_ID = '0xaa36a7';
 
 const CONTRACT_ABI = [
-  "function mint(string memory tokenURI) public payable returns (uint256)",
+  "function mint(string memory tokenURI) public returns (uint256)",
+  "function purchaseNFT(uint256 tokenId) public payable",
+  "function listForSale(uint256 tokenId, uint256 price) public",
+  "function removeFromSale(uint256 tokenId) public",
+  "function getAllNFTs() public view returns (uint256[] memory)",
+  "function getNFTsForSale() public view returns (uint256[] memory)",
   "function tokenURI(uint256 tokenId) public view returns (string memory)",
-  "function ownerOf(uint256 tokenId) public view returns (address)"
+  "function ownerOf(uint256 tokenId) public view returns (address)",
+  "function nftInfo(uint256 tokenId) public view returns (address creator, uint256 price, bool forSale)",
+  "function getTotalMinted() public view returns (uint256)"
 ];
 
 function App() {
   const [account, setAccount] = useState('');
   const [isConnected, setIsConnected] = useState(false);
-  const [isMinting, setIsMinting] = useState(false);
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [nftName, setNftName] = useState('');
-  const [nftDescription, setNftDescription] = useState('');
-  const [txHash, setTxHash] = useState('');
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
   const [network, setNetwork] = useState('');
   const [showForm, setShowForm] = useState(false);
 
@@ -243,30 +243,56 @@ function App() {
       setSuccess('Processing...');
       const provider = new ethers.BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
+      
+      const balance = await provider.getBalance(account);
+      const requiredAmount = ethers.parseEther(MINT_PRICE);
+      
+      if (balance < requiredAmount) {
+        setError(`Insufficient balance. You need at least ${MINT_PRICE} ETH plus gas fees. Get Sepolia ETH from https://sepoliafaucet.com/`);
+        setIsMinting(false);
+        return;
+      }
+      
       const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
       
-      const tx = await contract.mint(metadataUrl, {
-        value: ethers.parseEther(MINT_PRICE)
-      });
-      
-      setTxHash(tx.hash);
-      setSuccess('Processing...');
-      
-      await tx.wait();
-      
-      setSuccess(`Your picture has been saved successfully!`);
-      setNftName('');
-      setNftDescription('');
-      setSelectedFile(null);
-      document.getElementById('fileInput').value = '';
+      try {
+        const gasEstimate = await contract.mint.estimateGas(metadataUrl, {
+          value: requiredAmount
+        });
+        
+        const tx = await contract.mint(metadataUrl, {
+          value: requiredAmount,
+          gasLimit: gasEstimate
+        });
+        
+        setTxHash(tx.hash);
+        setSuccess('Processing...');
+        
+        await tx.wait();
+        
+        setSuccess(`Your picture has been saved successfully!`);
+        setNftName('');
+        setNftDescription('');
+        setSelectedFile(null);
+        document.getElementById('fileInput').value = '';
+      } catch (contractErr) {
+        console.error('Contract error:', contractErr);
+        if (contractErr.code === 'CALL_EXCEPTION') {
+          setError('Contract error. Please verify: 1) Contract address is correct, 2) You have enough ETH for gas fees, 3) Contract is deployed on Sepolia');
+        } else {
+          throw contractErr;
+        }
+      }
     } catch (err) {
       console.error('Error minting NFT:', err);
       if (err.code === 'INSUFFICIENT_FUNDS') {
         setError('Insufficient funds. You need at least 0.000001 ETH plus gas fees.');
       } else if (err.code === 'ACTION_REJECTED') {
         setError('Action cancelled');
+      } else if (err.message) {
+        setError(err.message);
       } else {
-        setError(err.message || 'Failed to save picture');
+        setError('Failed to save picture. Please try again.');
       }
     } finally {
       setIsMinting(false);

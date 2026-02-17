@@ -7,35 +7,116 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract NFTMinter is ERC721URIStorage, Ownable {
     uint256 private _tokenIdCounter;
-    uint256 public constant MINT_PRICE = 0.000001 ether;
+    uint256 public purchasePrice = 0.001 ether;
+    
+    struct NFTInfo {
+        address creator;
+        uint256 price;
+        bool forSale;
+    }
+    
+    mapping(uint256 => NFTInfo) public nftInfo;
+    
+    event NFTMinted(address indexed creator, uint256 indexed tokenId, string tokenURI);
+    event NFTPurchased(address indexed buyer, address indexed seller, uint256 indexed tokenId, uint256 price);
+    event NFTListedForSale(uint256 indexed tokenId, uint256 price);
+    event NFTRemovedFromSale(uint256 indexed tokenId);
 
-    event NFTMinted(address indexed minter, uint256 indexed tokenId, string tokenURI);
-
-    constructor() ERC721("MyNFT", "MNFT") Ownable(msg.sender) {
+    constructor() ERC721("FloralGallery", "FLORAL") Ownable(msg.sender) {
         _tokenIdCounter = 0;
     }
 
-    function mint(string memory tokenURI) public payable returns (uint256) {
-        require(msg.value == MINT_PRICE, "Incorrect payment amount. Must be exactly 0.000001 ETH");
-        
+    function mint(string memory tokenURI) public returns (uint256) {
         _tokenIdCounter++;
         uint256 newTokenId = _tokenIdCounter;
         
         _safeMint(msg.sender, newTokenId);
         _setTokenURI(newTokenId, tokenURI);
         
+        nftInfo[newTokenId] = NFTInfo({
+            creator: msg.sender,
+            price: purchasePrice,
+            forSale: true
+        });
+        
         emit NFTMinted(msg.sender, newTokenId, tokenURI);
         
         return newTokenId;
     }
 
-    function withdraw() public onlyOwner {
-        uint256 balance = address(this).balance;
-        require(balance > 0, "No funds to withdraw");
-        payable(owner()).transfer(balance);
+    function purchaseNFT(uint256 tokenId) public payable {
+        require(_ownerOf(tokenId) != address(0), "NFT does not exist");
+        require(nftInfo[tokenId].forSale, "NFT is not for sale");
+        require(msg.value >= nftInfo[tokenId].price, "Insufficient payment");
+        require(msg.sender != ownerOf(tokenId), "You already own this NFT");
+        
+        address seller = ownerOf(tokenId);
+        uint256 price = nftInfo[tokenId].price;
+        
+        nftInfo[tokenId].forSale = false;
+        
+        _transfer(seller, msg.sender, tokenId);
+        
+        payable(seller).transfer(price);
+        
+        if (msg.value > price) {
+            payable(msg.sender).transfer(msg.value - price);
+        }
+        
+        emit NFTPurchased(msg.sender, seller, tokenId, price);
+    }
+
+    function listForSale(uint256 tokenId, uint256 price) public {
+        require(ownerOf(tokenId) == msg.sender, "You don't own this NFT");
+        require(price > 0, "Price must be greater than 0");
+        
+        nftInfo[tokenId].price = price;
+        nftInfo[tokenId].forSale = true;
+        
+        emit NFTListedForSale(tokenId, price);
+    }
+
+    function removeFromSale(uint256 tokenId) public {
+        require(ownerOf(tokenId) == msg.sender, "You don't own this NFT");
+        
+        nftInfo[tokenId].forSale = false;
+        
+        emit NFTRemovedFromSale(tokenId);
+    }
+
+    function getAllNFTs() public view returns (uint256[] memory) {
+        uint256[] memory tokenIds = new uint256[](_tokenIdCounter);
+        for (uint256 i = 1; i <= _tokenIdCounter; i++) {
+            tokenIds[i - 1] = i;
+        }
+        return tokenIds;
+    }
+
+    function getNFTsForSale() public view returns (uint256[] memory) {
+        uint256 forSaleCount = 0;
+        for (uint256 i = 1; i <= _tokenIdCounter; i++) {
+            if (nftInfo[i].forSale) {
+                forSaleCount++;
+            }
+        }
+        
+        uint256[] memory forSaleTokens = new uint256[](forSaleCount);
+        uint256 index = 0;
+        for (uint256 i = 1; i <= _tokenIdCounter; i++) {
+            if (nftInfo[i].forSale) {
+                forSaleTokens[index] = i;
+                index++;
+            }
+        }
+        
+        return forSaleTokens;
     }
 
     function getTotalMinted() public view returns (uint256) {
         return _tokenIdCounter;
+    }
+
+    function setPurchasePrice(uint256 newPrice) public onlyOwner {
+        purchasePrice = newPrice;
     }
 }
