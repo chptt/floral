@@ -6,25 +6,25 @@ import './App.css';
 const CONTRACT_ADDRESS = import.meta.env.VITE_CONTRACT_ADDRESS;
 const PINATA_API_KEY = import.meta.env.VITE_PINATA_API_KEY;
 const PINATA_SECRET_API_KEY = import.meta.env.VITE_PINATA_SECRET_API_KEY;
+const MINT_PRICE = '0.000001';
 const SEPOLIA_CHAIN_ID = '0xaa36a7';
 
 const CONTRACT_ABI = [
-  "function mint(string memory tokenURI) public returns (uint256)",
-  "function purchaseNFT(uint256 tokenId) public payable",
-  "function listForSale(uint256 tokenId, uint256 price) public",
-  "function removeFromSale(uint256 tokenId) public",
-  "function getAllNFTs() public view returns (uint256[] memory)",
-  "function getNFTsForSale() public view returns (uint256[] memory)",
+  "function mint(string memory tokenURI) public payable returns (uint256)",
   "function tokenURI(uint256 tokenId) public view returns (string memory)",
-  "function ownerOf(uint256 tokenId) public view returns (address)",
-  "function nftInfo(uint256 tokenId) public view returns (address creator, uint256 price, bool forSale)",
-  "function getTotalMinted() public view returns (uint256)"
+  "function ownerOf(uint256 tokenId) public view returns (address)"
 ];
 
 function App() {
   const [account, setAccount] = useState('');
   const [isConnected, setIsConnected] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
+  const [isMinting, setIsMinting] = useState(false);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [nftName, setNftName] = useState('');
+  const [nftDescription, setNftDescription] = useState('');
+  const [txHash, setTxHash] = useState('');
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [network, setNetwork] = useState('');
   const [showForm, setShowForm] = useState(false);
 
