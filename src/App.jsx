@@ -10,9 +10,16 @@ const MINT_PRICE = '0.000001';
 const SEPOLIA_CHAIN_ID = '0xaa36a7';
 
 const CONTRACT_ABI = [
-  "function mint(string memory tokenURI) public payable returns (uint256)",
+  "function mint(string memory tokenURI) public returns (uint256)",
+  "function purchaseNFT(uint256 tokenId) public payable",
+  "function listForSale(uint256 tokenId, uint256 price) public",
+  "function removeFromSale(uint256 tokenId) public",
+  "function getAllNFTs() public view returns (uint256[] memory)",
+  "function getNFTsForSale() public view returns (uint256[] memory)",
   "function tokenURI(uint256 tokenId) public view returns (string memory)",
-  "function ownerOf(uint256 tokenId) public view returns (address)"
+  "function ownerOf(uint256 tokenId) public view returns (address)",
+  "function nftInfo(uint256 tokenId) public view returns (address creator, uint256 price, bool forSale)",
+  "function getTotalMinted() public view returns (uint256)"
 ];
 
 function App() {
@@ -244,26 +251,10 @@ function App() {
       const provider = new ethers.BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
       
-      const balance = await provider.getBalance(account);
-      const requiredAmount = ethers.parseEther(MINT_PRICE);
-      
-      if (balance < requiredAmount) {
-        setError(`Insufficient balance. You need at least ${MINT_PRICE} ETH plus gas fees. Get Sepolia ETH from https://sepoliafaucet.com/`);
-        setIsMinting(false);
-        return;
-      }
-      
       const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
       
       try {
-        const gasEstimate = await contract.mint.estimateGas(metadataUrl, {
-          value: requiredAmount
-        });
-        
-        const tx = await contract.mint(metadataUrl, {
-          value: requiredAmount,
-          gasLimit: gasEstimate
-        });
+        const tx = await contract.mint(metadataUrl);
         
         setTxHash(tx.hash);
         setSuccess('Processing...');
@@ -386,8 +377,8 @@ function App() {
             </div>
 
             <div className="mint-info">
-              <p>Fee: {MINT_PRICE} ETH</p>
-              <p className="gas-note">+ network fees</p>
+              <p>Fee: FREE (only gas fees)</p>
+              <p className="gas-note">You only pay network fees</p>
             </div>
 
             <button
