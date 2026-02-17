@@ -21,14 +21,57 @@ VITE_PINATA_SECRET_API_KEY=your_pinata_secret_api_key
 npm run dev
 ```
 
-## Build
+## Deploy to Vercel
 
+### Option 1: Via Vercel Dashboard
+
+1. Push your code to GitHub
+2. Go to [Vercel Dashboard](https://vercel.com)
+3. Click "Add New Project"
+4. Import your GitHub repository
+5. Configure project:
+   - Framework Preset: Vite
+   - Build Command: `npm run build`
+   - Output Directory: `dist`
+6. **Add Environment Variables** (Important!):
+   - Click "Environment Variables"
+   - Add these three variables:
+     - `VITE_CONTRACT_ADDRESS` = your deployed contract address
+     - `VITE_PINATA_API_KEY` = your Pinata API key
+     - `VITE_PINATA_SECRET_API_KEY` = your Pinata secret key
+7. Click "Deploy"
+
+### Option 2: Via Vercel CLI
+
+1. Install Vercel CLI:
 ```bash
-npm run build
+npm install -g vercel
 ```
 
-## Deploy
-
+2. Login:
 ```bash
-npm run preview
+vercel login
 ```
+
+3. Deploy:
+```bash
+vercel
+```
+
+4. Add environment variables:
+```bash
+vercel env add VITE_CONTRACT_ADDRESS
+vercel env add VITE_PINATA_API_KEY
+vercel env add VITE_PINATA_SECRET_API_KEY
+```
+
+5. Deploy to production:
+```bash
+vercel --prod
+```
+
+## Important Notes
+
+- Make sure to add all three environment variables in Vercel
+- The app will show error messages if environment variables are missing
+- Get Sepolia testnet ETH from https://sepoliafaucet.com/

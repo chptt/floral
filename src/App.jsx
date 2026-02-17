@@ -26,6 +26,7 @@ function App() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [network, setNetwork] = useState('');
+  const [showForm, setShowForm] = useState(false);
 
   useEffect(() => {
     checkIfWalletIsConnected();
@@ -206,8 +207,13 @@ function App() {
       return;
     }
 
-    if (!CONTRACT_ADDRESS || !PINATA_API_KEY || !PINATA_SECRET_API_KEY) {
-      setError('Please configure environment variables');
+    if (!CONTRACT_ADDRESS || CONTRACT_ADDRESS === '0x...') {
+      setError('Contract address not configured. Please contact the administrator.');
+      return;
+    }
+
+    if (!PINATA_API_KEY || !PINATA_SECRET_API_KEY) {
+      setError('Storage service not configured. Please contact the administrator.');
       return;
     }
 
@@ -273,20 +279,49 @@ function App() {
         <h1>Floral Gallery</h1>
         
         {!isConnected ? (
-          <button className="connect-btn" onClick={connectWallet}>
-            Connect MetaMask
-          </button>
+          <>
+            <div className="welcome-section">
+              <p className="welcome-text">
+                Welcome to Floral Gallery - a place to preserve your beautiful flower pictures forever.
+              </p>
+              <p className="welcome-subtext">
+                Connect your wallet to get started
+              </p>
+            </div>
+            <button className="connect-btn" onClick={connectWallet}>
+              Connect MetaMask
+            </button>
+          </>
+        ) : !showForm ? (
+          <>
+            <div className="wallet-info">
+              <p>Connected: {account.slice(0, 6)}...{account.slice(-4)}</p>
+              {network && <p className="network">Network: {network}</p>}
+            </div>
+            <div className="dashboard">
+              <h2>Dashboard</h2>
+              <p className="dashboard-text">Ready to save your floral pictures?</p>
+              <button className="start-btn" onClick={() => setShowForm(true)}>
+                Upload Picture
+              </button>
+            </div>
+          </>
         ) : (
-          <div className="wallet-info">
-            <p>Connected: {account.slice(0, 6)}...{account.slice(-4)}</p>
-            {network && <p className="network">Network: {network}</p>}
-          </div>
+          <>
+            <div className="wallet-info">
+              <p>Connected: {account.slice(0, 6)}...{account.slice(-4)}</p>
+              {network && <p className="network">Network: {network}</p>}
+              <button className="back-btn" onClick={() => setShowForm(false)}>
+                ← Back to Dashboard
+              </button>
+            </div>
+          </>
         )}
 
         {error && <div className="error">{error}</div>}
         {success && <div className="success">{success}</div>}
 
-        {isConnected && (
+        {isConnected && showForm && (
           <div className="mint-form">
             <div className="form-group">
               <label>Flower Name</label>
