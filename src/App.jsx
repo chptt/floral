@@ -352,30 +352,33 @@ function App() {
       <div className="container">
         <header className="header">
           <h1>Floral Gallery</h1>
-          {!isConnected ? (
-            <button className="connect-btn-small" onClick={connectWallet}>
-              Connect Wallet
-            </button>
-          ) : (
-            <div className="header-wallet">
-              <span className="wallet-address">{account.slice(0, 6)}...{account.slice(-4)}</span>
-              {network && <span className="network-badge">{network}</span>}
-            </div>
-          )}
+          <div className="header-right">
+            {isConnected && !showForm && (
+              <button className="upload-btn" onClick={() => setShowForm(true)}>
+                + Upload Picture
+              </button>
+            )}
+            {!isConnected ? (
+              <button className="connect-btn-small" onClick={connectWallet}>
+                Connect Wallet
+              </button>
+            ) : (
+              <div className="header-wallet">
+                <span className="wallet-address">{account.slice(0, 6)}...{account.slice(-4)}</span>
+                {network && <span className="network-badge">{network}</span>}
+              </div>
+            )}
+          </div>
         </header>
 
-        {error && <div className="error">{error}</div>}
-        {success && <div className="success">{success}</div>}
-
-        {!showForm ? (
+        {!showForm && (
           <>
+            {error && <div className="error" style={{margin: '20px 40px'}}>{error}</div>}
+            {success && <div className="success" style={{margin: '20px 40px'}}>{success}</div>}
+
             <div className="gallery-header">
-              <h2>All Floral Pictures</h2>
-              {isConnected && (
-                <button className="upload-btn" onClick={() => setShowForm(true)}>
-                  + Upload Picture
-                </button>
-              )}
+              <h2>Discover Beautiful Flowers</h2>
+              <p className="gallery-subtext">Explore floral pictures from our community</p>
             </div>
 
             {isLoading ? (
@@ -407,18 +410,25 @@ function App() {
               </div>
             )}
           </>
-        ) : (
+        )}
+
+        {showForm && (
           <div className="upload-section">
-            <div className="upload-header">
-              <h2>Upload Your Floral Picture</h2>
-              <button className="back-btn" onClick={() => {
-                setShowForm(false);
-                setError('');
-                setSuccess('');
-              }}>
-                ← Back to Gallery
-              </button>
-            </div>
+            <div className="upload-container">
+              <div className="upload-card">
+                <div className="upload-header">
+                  <h2>Upload Your Floral Picture</h2>
+                  <button className="back-btn" onClick={() => {
+                    setShowForm(false);
+                    setError('');
+                    setSuccess('');
+                  }}>
+                    ← Back to Gallery
+                  </button>
+                </div>
+
+                {error && <div className="error">{error}</div>}
+                {success && <div className="success">{success}</div>}
           <div className="mint-form">
             <div className="form-group">
               <label>Flower Name</label>
@@ -482,7 +492,9 @@ function App() {
               </div>
             )}
           </div>
-        )}
+        </div>
+      </div>
+    )}
       </div>
     </div>
   );
