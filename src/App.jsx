@@ -385,7 +385,7 @@ function App() {
               <div className="loading">Loading gallery...</div>
             ) : allNFTs.length === 0 ? (
               <div className="empty-gallery">
-                <p>No floral pictures yet. Be the first to upload!</p>
+                <p>Empty</p>
                 {!isConnected && (
                   <button className="connect-btn" onClick={connectWallet}>
                     Connect Wallet to Upload
