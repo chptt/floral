@@ -34,10 +34,60 @@ function App() {
   const [success, setSuccess] = useState('');
   const [network, setNetwork] = useState('');
   const [showForm, setShowForm] = useState(false);
+  const [allNFTs, setAllNFTs] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     checkIfWalletIsConnected();
+    loadAllNFTs();
   }, []);
+
+  const loadAllNFTs = async () => {
+    if (!CONTRACT_ADDRESS || CONTRACT_ADDRESS === '0x...') {
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const provider = new ethers.JsonRpcProvider('https://sepolia.infura.io/v3/');
+      const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
+      
+      const tokenIds = await contract.getAllNFTs();
+      
+      const nftsData = await Promise.all(
+        tokenIds.map(async (tokenId) => {
+          try {
+            const tokenURI = await contract.tokenURI(tokenId);
+            const owner = await contract.ownerOf(tokenId);
+            const nftInfoData = await contract.nftInfo(tokenId);
+            
+            const metadataResponse = await fetch(tokenURI);
+            const metadata = await metadataResponse.json();
+            
+            return {
+              tokenId: tokenId.toString(),
+              name: metadata.name,
+              description: metadata.description,
+              image: metadata.image,
+              owner: owner,
+              creator: nftInfoData.creator,
+              price: ethers.formatEther(nftInfoData.price),
+              forSale: nftInfoData.forSale
+            };
+          } catch (err) {
+            console.error(`Error loading NFT ${tokenId}:`, err);
+            return null;
+          }
+        })
+      );
+      
+      setAllNFTs(nftsData.filter(nft => nft !== null).reverse());
+    } catch (err) {
+      console.error('Error loading NFTs:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const checkIfWalletIsConnected = async () => {
     try {
@@ -266,6 +316,13 @@ function App() {
         setNftDescription('');
         setSelectedFile(null);
         document.getElementById('fileInput').value = '';
+        
+        await loadAllNFTs();
+        
+        setTimeout(() => {
+          setShowForm(false);
+          setSuccess('');
+        }, 2000);
       } catch (contractErr) {
         console.error('Contract error:', contractErr);
         if (contractErr.code === 'CALL_EXCEPTION') {
@@ -293,52 +350,75 @@ function App() {
   return (
     <div className="app">
       <div className="container">
-        <h1>Floral Gallery</h1>
-        
-        {!isConnected ? (
-          <>
-            <div className="welcome-section">
-              <p className="welcome-text">
-                Welcome to Floral Gallery - a place to preserve your beautiful flower pictures forever.
-              </p>
-              <p className="welcome-subtext">
-                Connect your wallet to get started
-              </p>
-            </div>
-            <button className="connect-btn" onClick={connectWallet}>
-              Connect MetaMask
+        <header className="header">
+          <h1>Floral Gallery</h1>
+          {!isConnected ? (
+            <button className="connect-btn-small" onClick={connectWallet}>
+              Connect Wallet
             </button>
-          </>
-        ) : !showForm ? (
-          <>
-            <div className="wallet-info">
-              <p>Connected: {account.slice(0, 6)}...{account.slice(-4)}</p>
-              {network && <p className="network">Network: {network}</p>}
+          ) : (
+            <div className="header-wallet">
+              <span className="wallet-address">{account.slice(0, 6)}...{account.slice(-4)}</span>
+              {network && <span className="network-badge">{network}</span>}
             </div>
-            <div className="dashboard">
-              <h2>Dashboard</h2>
-              <p className="dashboard-text">Ready to save your floral pictures?</p>
-              <button className="start-btn" onClick={() => setShowForm(true)}>
-                Upload Picture
-              </button>
-            </div>
-          </>
-        ) : (
-          <>
-            <div className="wallet-info">
-              <p>Connected: {account.slice(0, 6)}...{account.slice(-4)}</p>
-              {network && <p className="network">Network: {network}</p>}
-              <button className="back-btn" onClick={() => setShowForm(false)}>
-                ← Back to Dashboard
-              </button>
-            </div>
-          </>
-        )}
+          )}
+        </header>
 
         {error && <div className="error">{error}</div>}
         {success && <div className="success">{success}</div>}
 
-        {isConnected && showForm && (
+        {!showForm ? (
+          <>
+            <div className="gallery-header">
+              <h2>All Floral Pictures</h2>
+              {isConnected && (
+                <button className="upload-btn" onClick={() => setShowForm(true)}>
+                  + Upload Picture
+                </button>
+              )}
+            </div>
+
+            {isLoading ? (
+              <div className="loading">Loading gallery...</div>
+            ) : allNFTs.length === 0 ? (
+              <div className="empty-gallery">
+                <p>No floral pictures yet. Be the first to upload!</p>
+                {!isConnected && (
+                  <button className="connect-btn" onClick={connectWallet}>
+                    Connect Wallet to Upload
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="gallery-grid">
+                {allNFTs.map((nft) => (
+                  <div key={nft.tokenId} className="nft-card">
+                    <img src={nft.image} alt={nft.name} className="nft-image" />
+                    <div className="nft-info">
+                      <h3>{nft.name}</h3>
+                      <p className="nft-description">{nft.description}</p>
+                      <div className="nft-meta">
+                        <span className="nft-owner">By: {nft.creator.slice(0, 6)}...{nft.creator.slice(-4)}</span>
+                        {nft.forSale && <span className="for-sale-badge">For Sale: {nft.price} ETH</span>}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="upload-section">
+            <div className="upload-header">
+              <h2>Upload Your Floral Picture</h2>
+              <button className="back-btn" onClick={() => {
+                setShowForm(false);
+                setError('');
+                setSuccess('');
+              }}>
+                ← Back to Gallery
+              </button>
+            </div>
           <div className="mint-form">
             <div className="form-group">
               <label>Flower Name</label>
