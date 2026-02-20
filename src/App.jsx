@@ -43,6 +43,7 @@ function App() {
   const [selectedNFT, setSelectedNFT] = useState(null);
   const [isBuying, setIsBuying] = useState(false);
   const [nftPrice, setNftPrice] = useState('0.00001');
+  const [nftQuantity, setNftQuantity] = useState(1);
 
   useEffect(() => {
     checkIfWalletIsConnected();
@@ -339,18 +340,24 @@ function App() {
       
       try {
         const priceInWei = ethers.parseEther(nftPrice);
-        const tx = await contract.mint(metadataUrl, priceInWei);
+        const quantity = parseInt(nftQuantity);
         
-        setTxHash(tx.hash);
-        setSuccess('Processing...');
+        for (let i = 0; i < quantity; i++) {
+          setSuccess(`Minting ${i + 1} of ${quantity}...`);
+          const tx = await contract.mint(metadataUrl, priceInWei);
+          await tx.wait();
+          
+          if (i === 0) {
+            setTxHash(tx.hash);
+          }
+        }
         
-        await tx.wait();
-        
-        setSuccess(`Your picture has been saved successfully!`);
+        setSuccess(`Successfully minted ${quantity} NFT${quantity > 1 ? 's' : ''}!`);
         setNftName('');
         setNftDescription('');
         setSelectedFile(null);
         setNftPrice('0.00001');
+        setNftQuantity(1);
         document.getElementById('fileInput').value = '';
         
         await loadAllNFTs();
@@ -664,17 +671,31 @@ function App() {
               <p className="price-note">Set the price for your NFT in ETH</p>
             </div>
 
+            <div className="form-group">
+              <label>Quantity (Number of Copies)</label>
+              <input
+                type="number"
+                min="1"
+                max="100"
+                value={nftQuantity}
+                onChange={(e) => setNftQuantity(e.target.value)}
+                placeholder="1"
+                disabled={isMinting}
+              />
+              <p className="price-note">How many copies to mint (1-100)</p>
+            </div>
+
             <div className="mint-info">
               <p>Fee: FREE (only gas fees)</p>
-              <p className="gas-note">You only pay network fees</p>
+              <p className="gas-note">You only pay network fees × {nftQuantity}</p>
             </div>
 
             <button
               className="mint-btn"
               onClick={mintNFT}
-              disabled={isMinting || !selectedFile || !nftName || !nftDescription || !nftPrice || parseFloat(nftPrice) <= 0}
+              disabled={isMinting || !selectedFile || !nftName || !nftDescription || !nftPrice || parseFloat(nftPrice) <= 0 || !nftQuantity || parseInt(nftQuantity) < 1 || parseInt(nftQuantity) > 100}
             >
-              {isMinting ? 'Saving...' : 'Save Picture'}
+              {isMinting ? 'Saving...' : `Save ${nftQuantity > 1 ? nftQuantity + ' Copies' : 'Picture'}`}
             </button>
 
             {txHash && (
