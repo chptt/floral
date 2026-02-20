@@ -473,6 +473,50 @@ function App() {
     }
   };
 
+  const updatePrice = async (tokenId, newPrice) => {
+    if (!isConnected) {
+      setError('Please connect your wallet first');
+      return;
+    }
+
+    if (!newPrice || parseFloat(newPrice) <= 0) {
+      setError('Please enter a valid price');
+      return;
+    }
+
+    setIsBuying(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+
+      const priceInWei = ethers.parseEther(newPrice);
+      
+      setSuccess('Updating price...');
+      const tx = await contract.listForSale(tokenId, priceInWei);
+
+      await tx.wait();
+
+      setSuccess('Price updated successfully!');
+      await loadAllNFTs();
+      
+      const updatedNFT = { ...selectedNFT, price: newPrice };
+      setSelectedNFT(updatedNFT);
+    } catch (err) {
+      console.error('Error updating price:', err);
+      if (err.code === 'ACTION_REJECTED') {
+        setError('Transaction cancelled');
+      } else {
+        setError(err.message || 'Failed to update price');
+      }
+    } finally {
+      setIsBuying(false);
+    }
+  };
+
   return (
     <div className="app">
       <div className="container">
@@ -584,6 +628,31 @@ function App() {
                   {selectedNFT.owner.toLowerCase() === account.toLowerCase() && (
                     <div className="owner-actions">
                       <div className="owner-badge">You own this NFT</div>
+                      
+                      {selectedNFT.forSale && (
+                        <div className="update-price-section">
+                          <label>Update Price (ETH)</label>
+                          <input
+                            type="number"
+                            step="0.00001"
+                            min="0.00001"
+                            defaultValue={selectedNFT.price}
+                            id={`price-${selectedNFT.tokenId}`}
+                            className="price-input"
+                          />
+                          <button 
+                            className="update-price-btn" 
+                            onClick={() => {
+                              const newPrice = document.getElementById(`price-${selectedNFT.tokenId}`).value;
+                              updatePrice(selectedNFT.tokenId, newPrice);
+                            }}
+                            disabled={isBuying}
+                          >
+                            Update Price
+                          </button>
+                        </div>
+                      )}
+                      
                       <button 
                         className="delete-btn" 
                         onClick={() => deleteNFT(selectedNFT.tokenId)}
