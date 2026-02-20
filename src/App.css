@@ -732,3 +732,32 @@ body {
   opacity: 0.6;
   cursor: not-allowed;
 }
+
+.filter-section {
+  margin-top: 15px;
+}
+
+.filter-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  font-size: 1rem;
+  color: #555;
+  user-select: none;
+}
+
+.filter-checkbox input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  accent-color: #7986cb;
+}
+
+.filter-checkbox span {
+  font-weight: 500;
+}
+
+.filter-checkbox:hover span {
+  color: #7986cb;
+}

@@ -41,6 +41,7 @@ function App() {
   const [isBuying, setIsBuying] = useState(false);
   const [nftPrice, setNftPrice] = useState('0.00001');
   const [nftQuantity, setNftQuantity] = useState(1);
+  const [showOnlyForSale, setShowOnlyForSale] = useState(false);
 
   useEffect(() => {
     checkIfWalletIsConnected();
@@ -546,11 +547,21 @@ function App() {
             <div className="gallery-header">
               <h2>Discover Beautiful Flowers</h2>
               <p className="gallery-subtext">Explore floral pictures from our community</p>
+              <div className="filter-section">
+                <label className="filter-checkbox">
+                  <input
+                    type="checkbox"
+                    checked={showOnlyForSale}
+                    onChange={(e) => setShowOnlyForSale(e.target.checked)}
+                  />
+                  <span>Show only available for sale</span>
+                </label>
+              </div>
             </div>
 
             {isLoading ? (
               <div className="loading">Loading gallery...</div>
-            ) : allNFTs.length === 0 ? (
+            ) : allNFTs.filter(nft => !showOnlyForSale || nft.forSale).length === 0 ? (
               <div className="empty-gallery">
                 <p>Empty</p>
                 {!isConnected && (
@@ -561,7 +572,7 @@ function App() {
               </div>
             ) : (
               <div className="gallery-grid">
-                {allNFTs.map((nft) => (
+                {allNFTs.filter(nft => !showOnlyForSale || nft.forSale).map((nft) => (
                   <div key={nft.tokenId} className="nft-card" onClick={() => setSelectedNFT(nft)}>
                     <img src={nft.image} alt={nft.name} className="nft-image" />
                     <div className="nft-info">
