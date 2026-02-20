@@ -49,8 +49,16 @@ function App() {
 
     setIsLoading(true);
     try {
-      const provider = new ethers.JsonRpcProvider('https://sepolia.infura.io/v3/');
+      const provider = new ethers.JsonRpcProvider('https://rpc.sepolia.org');
       const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
+      
+      const totalMinted = await contract.getTotalMinted();
+      
+      if (totalMinted.toString() === '0') {
+        setAllNFTs([]);
+        setIsLoading(false);
+        return;
+      }
       
       const tokenIds = await contract.getAllNFTs();
       
