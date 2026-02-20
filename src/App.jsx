@@ -36,6 +36,8 @@ function App() {
   const [showForm, setShowForm] = useState(false);
   const [allNFTs, setAllNFTs] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedNFT, setSelectedNFT] = useState(null);
+  const [isBuying, setIsBuying] = useState(false);
 
   useEffect(() => {
     checkIfWalletIsConnected();
@@ -374,6 +376,50 @@ function App() {
     }
   };
 
+  const buyNFT = async (tokenId, price) => {
+    if (!isConnected) {
+      setError('Please connect your wallet first');
+      return;
+    }
+
+    setIsBuying(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+
+      const priceInWei = ethers.parseEther(price);
+      
+      setSuccess('Processing purchase...');
+      const tx = await contract.purchaseNFT(tokenId, {
+        value: priceInWei
+      });
+
+      setTxHash(tx.hash);
+      setSuccess('Transaction submitted...');
+
+      await tx.wait();
+
+      setSuccess('Purchase successful!');
+      setSelectedNFT(null);
+      await loadAllNFTs();
+    } catch (err) {
+      console.error('Error buying NFT:', err);
+      if (err.code === 'INSUFFICIENT_FUNDS') {
+        setError('Insufficient funds to purchase this NFT');
+      } else if (err.code === 'ACTION_REJECTED') {
+        setError('Transaction cancelled');
+      } else {
+        setError(err.message || 'Failed to purchase NFT');
+      }
+    } finally {
+      setIsBuying(false);
+    }
+  };
+
   return (
     <div className="app">
       <div className="container">
@@ -422,7 +468,7 @@ function App() {
             ) : (
               <div className="gallery-grid">
                 {allNFTs.map((nft) => (
-                  <div key={nft.tokenId} className="nft-card">
+                  <div key={nft.tokenId} className="nft-card" onClick={() => setSelectedNFT(nft)}>
                     <img src={nft.image} alt={nft.name} className="nft-image" />
                     <div className="nft-info">
                       <h3>{nft.name}</h3>
@@ -437,6 +483,62 @@ function App() {
               </div>
             )}
           </>
+        )}
+
+        {selectedNFT && (
+          <div className="modal-overlay" onClick={() => setSelectedNFT(null)}>
+            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+              <button className="modal-close" onClick={() => setSelectedNFT(null)}>×</button>
+              <div className="modal-body">
+                <div className="modal-image-container">
+                  <img src={selectedNFT.image} alt={selectedNFT.name} className="modal-image" />
+                </div>
+                <div className="modal-details">
+                  <h2>{selectedNFT.name}</h2>
+                  <p className="modal-description">{selectedNFT.description}</p>
+                  
+                  <div className="modal-info">
+                    <div className="info-row">
+                      <span className="info-label">Creator:</span>
+                      <span className="info-value">{selectedNFT.creator.slice(0, 6)}...{selectedNFT.creator.slice(-4)}</span>
+                    </div>
+                    <div className="info-row">
+                      <span className="info-label">Owner:</span>
+                      <span className="info-value">{selectedNFT.owner.slice(0, 6)}...{selectedNFT.owner.slice(-4)}</span>
+                    </div>
+                    <div className="info-row">
+                      <span className="info-label">Token ID:</span>
+                      <span className="info-value">#{selectedNFT.tokenId}</span>
+                    </div>
+                    {selectedNFT.forSale && (
+                      <div className="info-row">
+                        <span className="info-label">Price:</span>
+                        <span className="info-value price">{selectedNFT.price} ETH</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {selectedNFT.forSale && selectedNFT.owner.toLowerCase() !== account.toLowerCase() && (
+                    <button 
+                      className="buy-btn" 
+                      onClick={() => buyNFT(selectedNFT.tokenId, selectedNFT.price)}
+                      disabled={isBuying || !isConnected}
+                    >
+                      {isBuying ? 'Purchasing...' : `Buy for ${selectedNFT.price} ETH`}
+                    </button>
+                  )}
+
+                  {selectedNFT.owner.toLowerCase() === account.toLowerCase() && (
+                    <div className="owner-badge">You own this NFT</div>
+                  )}
+
+                  {!selectedNFT.forSale && (
+                    <div className="not-for-sale">Not for sale</div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
         )}
 
         {showForm && (
