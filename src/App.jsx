@@ -52,7 +52,14 @@ function App() {
 
     setIsLoading(true);
     try {
-      const provider = new ethers.JsonRpcProvider('https://rpc.sepolia.org');
+      let provider;
+      
+      if (window.ethereum) {
+        provider = new ethers.BrowserProvider(window.ethereum);
+      } else {
+        provider = new ethers.JsonRpcProvider('https://ethereum-sepolia-rpc.publicnode.com');
+      }
+      
       const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
       
       console.log('Loading NFTs from contract:', CONTRACT_ADDRESS);
