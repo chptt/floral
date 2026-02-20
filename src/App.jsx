@@ -22,9 +22,6 @@ const CONTRACT_ABI = [
   "function nftInfo(uint256 tokenId) public view returns (address creator, uint256 price, bool forSale)",
   "function getTotalMinted() public view returns (uint256)"
 ];
-  "function nftInfo(uint256 tokenId) public view returns (address creator, uint256 price, bool forSale)",
-  "function getTotalMinted() public view returns (uint256)"
-];
 
 function App() {
   const [account, setAccount] = useState('');
