@@ -26,7 +26,9 @@ contract NFTMinter is ERC721URIStorage, Ownable {
         _tokenIdCounter = 0;
     }
 
-    function mint(string memory tokenURI) public returns (uint256) {
+    function mint(string memory tokenURI, uint256 price) public returns (uint256) {
+        require(price > 0, "Price must be greater than 0");
+        
         _tokenIdCounter++;
         uint256 newTokenId = _tokenIdCounter;
         
@@ -35,13 +37,19 @@ contract NFTMinter is ERC721URIStorage, Ownable {
         
         nftInfo[newTokenId] = NFTInfo({
             creator: msg.sender,
-            price: purchasePrice,
+            price: price,
             forSale: true
         });
         
         emit NFTMinted(msg.sender, newTokenId, tokenURI);
         
         return newTokenId;
+    }
+
+    function burn(uint256 tokenId) public {
+        require(ownerOf(tokenId) == msg.sender, "You don't own this NFT");
+        _burn(tokenId);
+        delete nftInfo[tokenId];
     }
 
     function purchaseNFT(uint256 tokenId) public payable {

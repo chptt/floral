@@ -10,7 +10,8 @@ const MINT_PRICE = '0.000001';
 const SEPOLIA_CHAIN_ID = '0xaa36a7';
 
 const CONTRACT_ABI = [
-  "function mint(string memory tokenURI) public returns (uint256)",
+  "function mint(string memory tokenURI, uint256 price) public returns (uint256)",
+  "function burn(uint256 tokenId) public",
   "function purchaseNFT(uint256 tokenId) public payable",
   "function listForSale(uint256 tokenId, uint256 price) public",
   "function removeFromSale(uint256 tokenId) public",
@@ -18,6 +19,9 @@ const CONTRACT_ABI = [
   "function getNFTsForSale() public view returns (uint256[] memory)",
   "function tokenURI(uint256 tokenId) public view returns (string memory)",
   "function ownerOf(uint256 tokenId) public view returns (address)",
+  "function nftInfo(uint256 tokenId) public view returns (address creator, uint256 price, bool forSale)",
+  "function getTotalMinted() public view returns (uint256)"
+];
   "function nftInfo(uint256 tokenId) public view returns (address creator, uint256 price, bool forSale)",
   "function getTotalMinted() public view returns (uint256)"
 ];
@@ -38,6 +42,7 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedNFT, setSelectedNFT] = useState(null);
   const [isBuying, setIsBuying] = useState(false);
+  const [nftPrice, setNftPrice] = useState('0.00001');
 
   useEffect(() => {
     checkIfWalletIsConnected();
@@ -333,7 +338,8 @@ function App() {
       const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
       
       try {
-        const tx = await contract.mint(metadataUrl);
+        const priceInWei = ethers.parseEther(nftPrice);
+        const tx = await contract.mint(metadataUrl, priceInWei);
         
         setTxHash(tx.hash);
         setSuccess('Processing...');
@@ -344,6 +350,7 @@ function App() {
         setNftName('');
         setNftDescription('');
         setSelectedFile(null);
+        setNftPrice('0.00001');
         document.getElementById('fileInput').value = '';
         
         await loadAllNFTs();
@@ -414,6 +421,45 @@ function App() {
         setError('Transaction cancelled');
       } else {
         setError(err.message || 'Failed to purchase NFT');
+      }
+    } finally {
+      setIsBuying(false);
+    }
+  };
+
+  const deleteNFT = async (tokenId) => {
+    if (!isConnected) {
+      setError('Please connect your wallet first');
+      return;
+    }
+
+    if (!window.confirm('Are you sure you want to delete this NFT? This action cannot be undone.')) {
+      return;
+    }
+
+    setIsBuying(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+
+      setSuccess('Deleting NFT...');
+      const tx = await contract.burn(tokenId);
+
+      await tx.wait();
+
+      setSuccess('NFT deleted successfully!');
+      setSelectedNFT(null);
+      await loadAllNFTs();
+    } catch (err) {
+      console.error('Error deleting NFT:', err);
+      if (err.code === 'ACTION_REJECTED') {
+        setError('Transaction cancelled');
+      } else {
+        setError(err.message || 'Failed to delete NFT');
       }
     } finally {
       setIsBuying(false);
@@ -529,7 +575,16 @@ function App() {
                   )}
 
                   {selectedNFT.owner.toLowerCase() === account.toLowerCase() && (
-                    <div className="owner-badge">You own this NFT</div>
+                    <div className="owner-actions">
+                      <div className="owner-badge">You own this NFT</div>
+                      <button 
+                        className="delete-btn" 
+                        onClick={() => deleteNFT(selectedNFT.tokenId)}
+                        disabled={isBuying}
+                      >
+                        {isBuying ? 'Deleting...' : 'Delete NFT'}
+                      </button>
+                    </div>
                   )}
 
                   {!selectedNFT.forSale && (
@@ -595,6 +650,20 @@ function App() {
               )}
             </div>
 
+            <div className="form-group">
+              <label>Sale Price (ETH)</label>
+              <input
+                type="number"
+                step="0.00001"
+                min="0.00001"
+                value={nftPrice}
+                onChange={(e) => setNftPrice(e.target.value)}
+                placeholder="0.00001"
+                disabled={isMinting}
+              />
+              <p className="price-note">Set the price for your NFT in ETH</p>
+            </div>
+
             <div className="mint-info">
               <p>Fee: FREE (only gas fees)</p>
               <p className="gas-note">You only pay network fees</p>
@@ -603,7 +672,7 @@ function App() {
             <button
               className="mint-btn"
               onClick={mintNFT}
-              disabled={isMinting || !selectedFile || !nftName || !nftDescription}
+              disabled={isMinting || !selectedFile || !nftName || !nftDescription || !nftPrice || parseFloat(nftPrice) <= 0}
             >
               {isMinting ? 'Saving...' : 'Save Picture'}
             </button>
