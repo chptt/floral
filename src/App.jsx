@@ -515,6 +515,30 @@ function App() {
     }
   };
 
+  const downloadImage = async (imageUrl, nftName) => {
+    try {
+      setSuccess('Downloading image...');
+      
+      const response = await fetch(imageUrl);
+      const blob = await response.blob();
+      
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${nftName.replace(/[^a-z0-9]/gi, '_')}.jpg`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      setSuccess('Image downloaded successfully!');
+      setTimeout(() => setSuccess(''), 2000);
+    } catch (err) {
+      console.error('Error downloading image:', err);
+      setError('Failed to download image. You can right-click and save the image manually.');
+    }
+  };
+
   return (
     <div className="app">
       <div className="container">
@@ -636,6 +660,13 @@ function App() {
                   {selectedNFT.owner.toLowerCase() === account.toLowerCase() && (
                     <div className="owner-actions">
                       <div className="owner-badge">You own this NFT</div>
+                      
+                      <button 
+                        className="download-btn" 
+                        onClick={() => downloadImage(selectedNFT.image, selectedNFT.name)}
+                      >
+                        📥 Download Image
+                      </button>
                       
                       {selectedNFT.forSale && (
                         <div className="update-price-section">
