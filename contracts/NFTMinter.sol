@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract NFTMinter is ERC721URIStorage, Ownable {
     uint256 private _tokenIdCounter;
-    uint256 public purchasePrice = 0.001 ether;
+    uint256 public purchasePrice = 0.00001 ether;
     
     struct NFTInfo {
         address creator;
