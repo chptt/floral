@@ -44,6 +44,9 @@ function App() {
 
   const loadAllNFTs = async () => {
     if (!CONTRACT_ADDRESS || CONTRACT_ADDRESS === '0x...') {
+      console.log('No contract address configured');
+      setAllNFTs([]);
+      setIsLoading(false);
       return;
     }
 
@@ -52,7 +55,10 @@ function App() {
       const provider = new ethers.JsonRpcProvider('https://rpc.sepolia.org');
       const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
       
+      console.log('Loading NFTs from contract:', CONTRACT_ADDRESS);
+      
       const totalMinted = await contract.getTotalMinted();
+      console.log('Total minted:', totalMinted.toString());
       
       if (totalMinted.toString() === '0') {
         setAllNFTs([]);
@@ -61,6 +67,7 @@ function App() {
       }
       
       const tokenIds = await contract.getAllNFTs();
+      console.log('Token IDs:', tokenIds);
       
       const nftsData = await Promise.all(
         tokenIds.map(async (tokenId) => {
@@ -68,6 +75,8 @@ function App() {
             const tokenURI = await contract.tokenURI(tokenId);
             const owner = await contract.ownerOf(tokenId);
             const nftInfoData = await contract.nftInfo(tokenId);
+            
+            console.log(`Loading metadata for token ${tokenId} from:`, tokenURI);
             
             const metadataResponse = await fetch(tokenURI);
             const metadata = await metadataResponse.json();
@@ -89,9 +98,12 @@ function App() {
         })
       );
       
-      setAllNFTs(nftsData.filter(nft => nft !== null).reverse());
+      const validNFTs = nftsData.filter(nft => nft !== null).reverse();
+      console.log('Loaded NFTs:', validNFTs);
+      setAllNFTs(validNFTs);
     } catch (err) {
       console.error('Error loading NFTs:', err);
+      setAllNFTs([]);
     } finally {
       setIsLoading(false);
     }
